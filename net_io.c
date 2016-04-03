@@ -347,6 +347,7 @@ static void *prepareWrite(struct net_writer *writer, int len) {
         !writer->data)
         return NULL;
 
+    char* data = (char*)(writer->data);
     if (len > MODES_OUT_BUF_SIZE)
         return NULL;
 
@@ -355,14 +356,14 @@ static void *prepareWrite(struct net_writer *writer, int len) {
         flushWrites(writer);
     }
 
-    return (char*)(writer->data) + writer->dataUsed;
+    return data + writer->dataUsed;
 }
 
 // Complete a write previously begun by prepareWrite.
 // endptr should point one byte past the last byte written
 // to the buffer returned from prepareWrite.
 static void completeWrite(struct net_writer *writer, void *endptr) {
-    writer->dataUsed = (char*)endptr - writer->data;
+    writer->dataUsed = (char*)endptr - (char*)(writer->data);
 
     if (writer->dataUsed >= Modes.net_output_flush_size) {
         flushWrites(writer);
