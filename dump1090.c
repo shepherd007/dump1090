@@ -525,7 +525,7 @@ void readDataFromFile(void) {
     pthread_mutex_lock(&Modes.data_mutex);
     while (!Modes.exit && !eof) {
         ssize_t nread, toread;
-        void *r;
+        char *r;
         struct mag_buf *outbuf, *lastbuf;
         unsigned next_free_buffer;
         unsigned slen;
@@ -555,7 +555,7 @@ void readDataFromFile(void) {
         clock_gettime(CLOCK_REALTIME, &outbuf->sysTimestamp);
 
         toread = MODES_MAG_BUF_SAMPLES * bytes_per_sample;
-        r = readbuf;
+        r = (char*)readbuf;
         while (toread) {
             nread = read(Modes.fd, r, toread);
             if (nread <= 0) {
@@ -563,7 +563,7 @@ void readDataFromFile(void) {
                 eof = 1;
                 break;
             }
-            (char*)r += nread;
+            r += nread;
             toread -= nread;
         }
 
