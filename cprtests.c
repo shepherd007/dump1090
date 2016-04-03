@@ -20,7 +20,9 @@
 
 #include <math.h>
 #include <stdio.h>
-
+#ifdef WIN32
+#include "winstubs.h"
+#endif
 #include "cpr.h"
 
 // Global, airborne CPR test data:
@@ -300,8 +302,11 @@ static int testCPRRelative() {
     return ok;
 }
 
+
+
 int main(int __attribute__ ((unused)) argc, char __attribute__ ((unused)) **argv) {
     int ok = 1;
+
     ok = testCPRGlobalAirborne() && ok;
     ok = testCPRGlobalSurface() && ok;
     ok = testCPRRelative() && ok;

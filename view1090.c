@@ -31,11 +31,19 @@
 //
 // ============================= Utility functions ==========================
 //
+#ifndef WIN32
 void sigintHandler(int dummy) {
     MODES_NOTUSED(dummy);
     signal(SIGINT, SIG_DFL);  // reset signal handler - bit extra safety
     Modes.exit = 1;           // Signal to threads that we are done
 }
+#else
+BOOL WINAPI HandlerRoutine(DWORD dwCtrlType)
+{
+    Modes.exit = 1;
+    return TRUE;
+}
+#endif
 //
 // =============================== Terminal handling ========================
 //
@@ -141,6 +149,40 @@ void showHelp(void) {
     );
 }
 
+#ifdef _WIN32
+void showCopyright(void) {
+    uint64_t llTime = time(NULL) + 1;
+
+    printf(
+        "-----------------------------------------------------------------------------\n"
+        "|                        view1090 ModeS Receiver         Ver : " MODES_DUMP1090_VERSION " |\n"
+        "-----------------------------------------------------------------------------\n"
+        "\n"
+        " Copyright (c) 2014-2016 Oliver Jowett <oliver@mutability.co.uk>"
+        "\n"
+        " All rights reserved.\n"
+        "\n"
+        " THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n"
+        " ""AS IS"" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\n"
+        " LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\n"
+        " A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\n"
+        " HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\n"
+        " SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\n"
+        " LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\n"
+        " DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\n"
+        " THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n"
+        " (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\n"
+        " OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n"
+        "\n"
+        " For further details refer to <https://github.com/mutability/dump1090>\n"
+        "\n"
+    );
+
+    // delay for 1 second to give the user a chance to read the copyright
+    while (llTime >= time(NULL)) {}
+}
+#endif
+
 //
 //=========================================================================
 //
@@ -154,13 +196,18 @@ int main(int argc, char **argv) {
     // Set sane defaults
 
     view1090InitConfig();
-    signal(SIGINT, sigintHandler); // Define Ctrl/C handler (exit program)
 
+#ifdef WIN32
+    SetConsoleCtrlHandler(HandlerRoutine, TRUE);
+#else
+    // signal handlers:
+    signal(SIGINT, sigintHandler); // Define Ctrl/C handler (exit program)
+#endif
     // Parse the command line options
     for (j = 1; j < argc; j++) {
         int more = ((j + 1) < argc); // There are more arguments
 
-        if        (!strcmp(argv[j],"--net-bo-port") && more) {
+        if (!strcmp(argv[j],"--net-bo-port") && more) {
             bo_connect_port = atoi(argv[++j]);
         } else if (!strcmp(argv[j],"--net-bo-ipaddr") && more) {
             bo_connect_ipaddr = argv[++j];

@@ -50,8 +50,11 @@
 #include "util.h"
 
 #include <stdlib.h>
+#ifndef WIN32
 #include <sys/time.h>
-
+#else
+#include "winstubs.h"
+#endif
 uint64_t mstime(void)
 {
     struct timeval tv;

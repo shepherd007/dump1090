@@ -52,16 +52,20 @@
  */
 
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <sys/stat.h>
+#ifndef WIN32
+#include <sys/socket.h>
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <netdb.h>
+#else
+#include "winstubs.h"
+#endif
 #include <fcntl.h>
 #include <string.h>
-#include <netdb.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -82,6 +86,14 @@ int anetNonBlock(char *err, int fd)
 {
     int flags;
 
+#ifdef WIN32
+    int iMode = 1;
+    if (SOCKET_ERROR == ioctlsocket(fd, FIONBIO, &iMode))
+    {
+        anetSetError(err, "ioctlsocket(FIONBIO): %d", WSAGetLastError());
+        return ANET_ERR;
+    }
+#else
     /* Set the socket nonblocking.
      * Note that fcntl(2) for F_GETFL and F_SETFL can't be
      * interrupted by a signal. */
@@ -93,7 +105,7 @@ int anetNonBlock(char *err, int fd)
         anetSetError(err, "fcntl(F_SETFL,O_NONBLOCK): %s", strerror(errno));
         return ANET_ERR;
     }
-
+#endif
     return ANET_OK;
 }
 
@@ -105,6 +117,7 @@ int anetTcpNoDelay(char *err, int fd)
         anetSetError(err, "setsockopt TCP_NODELAY: %s", strerror(errno));
         return ANET_ERR;
     }
+
     return ANET_OK;
 }
 
@@ -115,6 +128,7 @@ int anetSetSendBuffer(char *err, int fd, int buffsize)
         anetSetError(err, "setsockopt SO_SNDBUF: %s", strerror(errno));
         return ANET_ERR;
     }
+
     return ANET_OK;
 }
 
@@ -125,12 +139,14 @@ int anetTcpKeepAlive(char *err, int fd)
         anetSetError(err, "setsockopt SO_KEEPALIVE: %s", strerror(errno));
         return ANET_ERR;
     }
+
     return ANET_OK;
 }
 
 static int anetCreateSocket(char *err, int domain)
 {
     int s, on = 1;
+
     if ((s = socket(domain, SOCK_STREAM, 0)) == -1) {
         anetSetError(err, "creating socket: %s", strerror(errno));
         return ANET_ERR;
@@ -142,6 +158,7 @@ static int anetCreateSocket(char *err, int domain)
         anetSetError(err, "setsockopt SO_REUSEADDR: %s", strerror(errno));
         return ANET_ERR;
     }
+
     return s;
 }
 
@@ -189,10 +206,15 @@ static int anetTcpGenericConnect(char *err, char *addr, char *service, int flags
         }
 
         anetSetError(err, "connect: %s", strerror(errno));
+#ifdef WIN32
+        closesocket(s);
+#else
         close(s);
+#endif
     }
 
     freeaddrinfo(gai_result);
+
     return ANET_ERR;
 }
 
@@ -244,7 +266,11 @@ static int anetListen(char *err, int s, struct sockaddr *sa, socklen_t len) {
 
     if (bind(s,sa,len) == -1) {
         anetSetError(err, "bind: %s", strerror(errno));
+#ifdef WIN32
+        closesocket(s);
+#else
         close(s);
+#endif
         return ANET_ERR;
     }
 
@@ -253,9 +279,14 @@ static int anetListen(char *err, int s, struct sockaddr *sa, socklen_t len) {
      * which will thus give us a backlog of 512 entries */
     if (listen(s, 511) == -1) {
         anetSetError(err, "listen: %s", strerror(errno));
+#ifdef WIN32
+        closesocket(s);
+#else
         close(s);
+#endif
         return ANET_ERR;
     }
+
     return ANET_OK;
 }
 
@@ -263,6 +294,7 @@ int anetTcpServer(char *err, char *service, char *bindaddr, int *fds, int nfds)
 {
     int s;
     int i = 0;
+
     struct addrinfo gai_hints;
     struct addrinfo *gai_result, *p;
     int gai_error;
@@ -294,12 +326,14 @@ int anetTcpServer(char *err, char *service, char *bindaddr, int *fds, int nfds)
     }
 
     freeaddrinfo(gai_result);
+
     return (i > 0 ? i : ANET_ERR);
 }
 
 static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len)
 {
     int fd;
+
     while(1) {
         fd = accept(s,sa,len);
         if (fd == -1) {
@@ -316,6 +350,7 @@ static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *l
 
 int anetTcpAccept(char *err, int s) {
     int fd;
+
     struct sockaddr_storage ss;
     socklen_t sslen = sizeof(ss);
 
