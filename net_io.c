@@ -238,7 +238,9 @@ struct net_service *makeFatsvOutputService(void)
 void modesInitNet(void) {
     struct net_service *s;
 
+#ifndef WIN32
     signal(SIGPIPE, SIG_IGN);
+#endif
     Modes.clients = NULL;
     Modes.services = NULL;
 
@@ -298,7 +300,11 @@ static void modesCloseClient(struct client *c) {
     // client (unpredictably: reading from client A may cause client B to
     // be freed)
 
+#ifdef WIN32
+    closesocket(c->fd);
+#else
     close(c->fd);
+#endif
     c->service->connections--;
 
     // mark it as inactive and ready to be freed
@@ -349,14 +355,14 @@ static void *prepareWrite(struct net_writer *writer, int len) {
         flushWrites(writer);
     }
 
-    return writer->data + writer->dataUsed;
+    return (char*)(writer->data) + writer->dataUsed;
 }
 
 // Complete a write previously begun by prepareWrite.
 // endptr should point one byte past the last byte written
 // to the buffer returned from prepareWrite.
 static void completeWrite(struct net_writer *writer, void *endptr) {
-    writer->dataUsed = endptr - writer->data;
+    writer->dataUsed = (char*)endptr - writer->data;
 
     if (writer->dataUsed >= Modes.net_output_flush_size) {
         flushWrites(writer);
@@ -1224,6 +1230,7 @@ char *generateHistoryJson(const char *url_path, int *len)
         return NULL;
 
     *len = Modes.json_aircraft_history[history_index].clen;
+
     return strdup(Modes.json_aircraft_history[history_index].content);
 }
 
@@ -1500,6 +1507,7 @@ static void modesReadFromClient(struct client *c) {
             left = MODES_CLIENT_BUF_SIZE;
             // If there is garbage, read more to discard it ASAP
         }
+
 #ifndef _WIN32
         nread = read(c->fd, c->buf+c->buflen, left);
 #else
@@ -1586,6 +1594,7 @@ static void modesReadFromClient(struct client *c) {
             // in the buffer, note that we full-scan the buffer at every read for simplicity.
             //
             while ((e = strstr(s, c->service->read_sep)) != NULL) { // end of first message if found
+
                 *e = '\0';                         // The handler expects null terminated strings
                 if (c->service->read_handler(c, s)) {               // Pass message to handler.
                     modesCloseClient(c);           // Handler returns 1 on error to signal we .

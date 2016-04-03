@@ -82,6 +82,7 @@ static void log_with_timestamp(const char *format, ...)
     fprintf(stderr, "%s  %s\n", timebuf, msg);
 }
 
+#ifndef WIN32
 static void sigintHandler(int dummy) {
     MODES_NOTUSED(dummy);
     signal(SIGINT, SIG_DFL);  // reset signal handler - bit extra safety
@@ -95,6 +96,15 @@ static void sigtermHandler(int dummy) {
     Modes.exit = 1;           // Signal to threads that we are done
     log_with_timestamp("Caught SIGTERM, shutting down..\n");
 }
+#else
+BOOL WINAPI HandlerRoutine(DWORD dwCtrlType)
+{
+    Modes.exit = 1;
+    log_with_timestamp("Caught SIGTERM, shutting down..\n");
+
+    return TRUE;
+}
+#endif
 //
 // =============================== Terminal handling ========================
 //
@@ -553,7 +563,7 @@ void readDataFromFile(void) {
                 eof = 1;
                 break;
             }
-            r += nread;
+            (char*)r += nread;
             toread -= nread;
         }
 
@@ -633,11 +643,7 @@ void *readerThreadEntryPoint(void *arg) {
     pthread_cond_signal(&Modes.data_cond);
     pthread_mutex_unlock(&Modes.data_mutex);
 
-#ifndef _WIN32
     pthread_exit(NULL);
-#else
-    return NULL;
-#endif
 }
 //
 // ============================== Snip mode =================================
@@ -738,6 +744,40 @@ MODES_DUMP1090_VARIANT " " MODES_DUMP1090_VERSION
     );
 }
 
+#ifdef _WIN32
+void showCopyright(void) {
+    uint64_t llTime = time(NULL) + 1;
+
+    printf(
+        "-----------------------------------------------------------------------------\n"
+        "|                        dump1090 ModeS Receiver         Ver : " MODES_DUMP1090_VERSION " |\n"
+        "-----------------------------------------------------------------------------\n"
+        "\n"
+        " Copyright (c) 2014-2016 Oliver Jowett <oliver@mutability.co.uk>"
+        "\n"
+        " All rights reserved.\n"
+        "\n"
+        " THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n"
+        " ""AS IS"" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\n"
+        " LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\n"
+        " A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\n"
+        " HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\n"
+        " SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\n"
+        " LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\n"
+        " DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\n"
+        " THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n"
+        " (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\n"
+        " OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n"
+        "\n"
+        " For further details refer to <https://github.com/mutability/dump1090>\n"
+        "\n"
+    );
+
+    // delay for 1 second to give the user a chance to read the copyright
+    while (llTime >= time(NULL)) {}
+}
+#endif
+
 static void display_total_stats(void)
 {
     struct stats added;
@@ -763,7 +803,7 @@ void backgroundTasks(void) {
     trackPeriodicUpdate();
 
     if (Modes.net) {
-	modesNetPeriodicWork();
+        modesNetPeriodicWork();
     }    
 
 
@@ -853,65 +893,65 @@ void backgroundTasks(void) {
 //
 int verbose_device_search(char *s)
 {
-	int i, device_count, device, offset;
-	char *s2;
-	char vendor[256], product[256], serial[256];
-	device_count = rtlsdr_get_device_count();
-	if (!device_count) {
-		fprintf(stderr, "No supported devices found.\n");
-		return -1;
-	}
-	fprintf(stderr, "Found %d device(s):\n", device_count);
-	for (i = 0; i < device_count; i++) {
-            if (rtlsdr_get_device_usb_strings(i, vendor, product, serial) != 0) {
-                fprintf(stderr, "  %d:  unable to read device details\n", i);
-            } else {
-                fprintf(stderr, "  %d:  %s, %s, SN: %s\n", i, vendor, product, serial);
-            }
-	}
-	fprintf(stderr, "\n");
-	/* does string look like raw id number */
-	device = (int)strtol(s, &s2, 0);
-	if (s2[0] == '\0' && device >= 0 && device < device_count) {
-		fprintf(stderr, "Using device %d: %s\n",
-			device, rtlsdr_get_device_name((uint32_t)device));
-		return device;
-	}
-	/* does string exact match a serial */
-	for (i = 0; i < device_count; i++) {
-		rtlsdr_get_device_usb_strings(i, vendor, product, serial);
-		if (strcmp(s, serial) != 0) {
-			continue;}
-		device = i;
-		fprintf(stderr, "Using device %d: %s\n",
-			device, rtlsdr_get_device_name((uint32_t)device));
-		return device;
-	}
-	/* does string prefix match a serial */
-	for (i = 0; i < device_count; i++) {
-		rtlsdr_get_device_usb_strings(i, vendor, product, serial);
-		if (strncmp(s, serial, strlen(s)) != 0) {
-			continue;}
-		device = i;
-		fprintf(stderr, "Using device %d: %s\n",
-			device, rtlsdr_get_device_name((uint32_t)device));
-		return device;
-	}
-	/* does string suffix match a serial */
-	for (i = 0; i < device_count; i++) {
-		rtlsdr_get_device_usb_strings(i, vendor, product, serial);
-		offset = strlen(serial) - strlen(s);
-		if (offset < 0) {
-			continue;}
-		if (strncmp(s, serial+offset, strlen(s)) != 0) {
-			continue;}
-		device = i;
-		fprintf(stderr, "Using device %d: %s\n",
-			device, rtlsdr_get_device_name((uint32_t)device));
-		return device;
-	}
-	fprintf(stderr, "No matching devices found.\n");
-	return -1;
+    int i, device_count, device, offset;
+    char *s2;
+    char vendor[256], product[256], serial[256];
+    device_count = rtlsdr_get_device_count();
+    if (!device_count) {
+        fprintf(stderr, "No supported devices found.\n");
+        return -1;
+    }
+    fprintf(stderr, "Found %d device(s):\n", device_count);
+    for (i = 0; i < device_count; i++) {
+        if (rtlsdr_get_device_usb_strings(i, vendor, product, serial) != 0) {
+            fprintf(stderr, "  %d:  unable to read device details\n", i);
+        } else {
+            fprintf(stderr, "  %d:  %s, %s, SN: %s\n", i, vendor, product, serial);
+        }
+    }
+    fprintf(stderr, "\n");
+    /* does string look like raw id number */
+    device = (int)strtol(s, &s2, 0);
+    if (s2[0] == '\0' && device >= 0 && device < device_count) {
+        fprintf(stderr, "Using device %d: %s\n",
+            device, rtlsdr_get_device_name((uint32_t)device));
+        return device;
+    }
+    /* does string exact match a serial */
+    for (i = 0; i < device_count; i++) {
+        rtlsdr_get_device_usb_strings(i, vendor, product, serial);
+        if (strcmp(s, serial) != 0) {
+            continue;}
+        device = i;
+        fprintf(stderr, "Using device %d: %s\n",
+            device, rtlsdr_get_device_name((uint32_t)device));
+        return device;
+    }
+    /* does string prefix match a serial */
+    for (i = 0; i < device_count; i++) {
+        rtlsdr_get_device_usb_strings(i, vendor, product, serial);
+        if (strncmp(s, serial, strlen(s)) != 0) {
+            continue;}
+        device = i;
+        fprintf(stderr, "Using device %d: %s\n",
+            device, rtlsdr_get_device_name((uint32_t)device));
+        return device;
+    }
+    /* does string suffix match a serial */
+    for (i = 0; i < device_count; i++) {
+        rtlsdr_get_device_usb_strings(i, vendor, product, serial);
+        offset = strlen(serial) - strlen(s);
+        if (offset < 0) {
+            continue;}
+        if (strncmp(s, serial+offset, strlen(s)) != 0) {
+            continue;}
+        device = i;
+        fprintf(stderr, "Using device %d: %s\n",
+            device, rtlsdr_get_device_name((uint32_t)device));
+        return device;
+    }
+    fprintf(stderr, "No matching devices found.\n");
+    return -1;
 }
 //
 //=========================================================================
@@ -922,9 +962,13 @@ int main(int argc, char **argv) {
     // Set sane defaults
     modesInitConfig();
 
+#ifdef WIN32
+    SetConsoleCtrlHandler(HandlerRoutine, TRUE);
+#else
     // signal handlers:
     signal(SIGINT, sigintHandler);
     signal(SIGTERM, sigtermHandler);
+#endif
 
     // Parse the command line options
     for (j = 1; j < argc; j++) {
@@ -1112,6 +1156,18 @@ int main(int argc, char **argv) {
     if (Modes.interactive) {signal(SIGWINCH, sigWinchCallback);}
 #endif
 
+#ifdef _WIN32
+    // Init windows sockets
+    if ((!Modes.wsaData.wVersion)
+        && (!Modes.wsaData.wHighVersion)) {
+        // Try to start the windows socket support
+        if (WSAStartup(MAKEWORD(2, 1), &Modes.wsaData) != 0)
+        {
+            fprintf(stderr, "WSAStartup returned Error\n");
+        }
+    }
+#endif
+
     // Initialization
     log_with_timestamp("%s %s starting up.", MODES_DUMP1090_VARIANT, MODES_DUMP1090_VERSION);
     modesInit();
@@ -1252,11 +1308,11 @@ int main(int argc, char **argv) {
     cleanup_converter(Modes.converter_state);
     log_with_timestamp("Normal exit.");
 
-#ifndef _WIN32
-    pthread_exit(0);
-#else
-    return (0);
+#ifdef WIN32
+    // release windows sockets
+    WSACleanup();
 #endif
+    pthread_exit(0);
 }
 //
 //=========================================================================
