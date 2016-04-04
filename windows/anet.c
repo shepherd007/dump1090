@@ -87,7 +87,7 @@ static char* WSAGetErrorDescription(DWORD err)
     FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
         NULL, err,
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		(LPSTR)&error_description, ANET_ERR_LEN, NULL);
+        (LPSTR)&error_description, ANET_ERR_LEN, NULL);
 
     return error_description;
 }
@@ -97,7 +97,7 @@ static void anetSetError(char *err, const char *fmt, ...)
     va_list ap = NULL;
 
     if (!err) return;
-    va_start(ap, fmt);	
+    va_start(ap, fmt);    
     vsnprintf(err, ANET_ERR_LEN, fmt, ap);
     va_end(ap);
 }
@@ -107,8 +107,8 @@ int anetNonBlock(char *err, int fd)
     int iMode = 1;
     if (SOCKET_ERROR == ioctlsocket(fd, FIONBIO, &iMode))
     {
-		DWORD error_code = WSAGetLastError();
-		anetSetError(err, "ioctlsocket FIONBIO: %s", WSAGetErrorDescription(error_code));
+        DWORD error_code = WSAGetLastError();
+        anetSetError(err, "ioctlsocket FIONBIO: %s", WSAGetErrorDescription(error_code));
         return ANET_ERR;
     }
 
@@ -117,10 +117,10 @@ int anetNonBlock(char *err, int fd)
 
 int anetSetSendBuffer(char *err, int fd, int buffsize)
 {
-	if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (void*)&buffsize, sizeof(buffsize)) == SOCKET_ERROR)
+    if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (void*)&buffsize, sizeof(buffsize)) == SOCKET_ERROR)
     {
-		DWORD error_code = WSAGetLastError();
-		anetSetError(err, "setsockopt SO_SNDBUF: %s", WSAGetErrorDescription(error_code));
+        DWORD error_code = WSAGetLastError();
+        anetSetError(err, "setsockopt SO_SNDBUF: %s", WSAGetErrorDescription(error_code));
         return ANET_ERR;
     }
 
@@ -131,17 +131,17 @@ static int anetCreateSocket(char *err, int domain)
 {
     int s, on = 1;
 
-	if ((s = socket(domain, SOCK_STREAM, 0)) == INVALID_SOCKET) {
-		DWORD error_code = WSAGetLastError();
-		anetSetError(err, "creating socket: %s", WSAGetErrorDescription(error_code));
+    if ((s = socket(domain, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+        DWORD error_code = WSAGetLastError();
+        anetSetError(err, "creating socket: %s", WSAGetErrorDescription(error_code));
         return ANET_ERR;
     }
 
     /* Make sure connection-intensive things like the redis benckmark
      * will be able to close/open sockets a zillion of times */
-	if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void*)&on, sizeof(on)) == SOCKET_ERROR) {
-		DWORD error_code = WSAGetLastError();
-		anetSetError(err, "setsockopt SO_REUSEADDR: %s", WSAGetErrorDescription(error_code));
+    if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void*)&on, sizeof(on)) == SOCKET_ERROR) {
+        DWORD error_code = WSAGetLastError();
+        anetSetError(err, "setsockopt SO_REUSEADDR: %s", WSAGetErrorDescription(error_code));
         return ANET_ERR;
     }
 
@@ -168,8 +168,8 @@ static int anetTcpGenericConnect(char *err, char *addr, char *service, int flags
 
     gai_error = getaddrinfo(addr, service, &gai_hints, &gai_result);
     if (gai_error != 0) {
-		DWORD error_code = WSAGetLastError();
-		anetSetError(err, "can't resolve %s: %s", addr, WSAGetErrorDescription(error_code));
+        DWORD error_code = WSAGetLastError();
+        anetSetError(err, "can't resolve %s: %s", addr, WSAGetErrorDescription(error_code));
         return ANET_ERR;
     }
 
@@ -193,7 +193,7 @@ static int anetTcpGenericConnect(char *err, char *addr, char *service, int flags
             return s;
         }
 
-		anetSetError(err, "connect: %s", WSAGetErrorDescription(error_code));
+        anetSetError(err, "connect: %s", WSAGetErrorDescription(error_code));
 
         closesocket(s);
     }
@@ -220,9 +220,9 @@ static int anetListen(char *err, int s, struct sockaddr *sa, socklen_t len) {
     }
 
     if (bind(s,sa,len) == -1) {
-		DWORD error_code = WSAGetLastError();
+        DWORD error_code = WSAGetLastError();
 
-		anetSetError(err, "bind: %s", WSAGetErrorDescription(error_code));
+        anetSetError(err, "bind: %s", WSAGetErrorDescription(error_code));
         closesocket(s);
 
         return ANET_ERR;
@@ -232,9 +232,9 @@ static int anetListen(char *err, int s, struct sockaddr *sa, socklen_t len) {
      * the kernel does: backlogsize = roundup_pow_of_two(backlogsize + 1);
      * which will thus give us a backlog of 512 entries */
     if (listen(s, 511) == -1) {
-		DWORD error_code = WSAGetLastError();
+        DWORD error_code = WSAGetLastError();
 
-		anetSetError(err, "listn: %s", WSAGetErrorDescription(error_code));
+        anetSetError(err, "listn: %s", WSAGetErrorDescription(error_code));
         closesocket(s);
 
         return ANET_ERR;
@@ -263,8 +263,8 @@ int anetTcpServer(char *err, char *service, char *bindaddr, int *fds, int nfds)
 
     gai_error = getaddrinfo(bindaddr, service, &gai_hints, &gai_result);
     if (gai_error != 0) {
-		DWORD error_code = WSAGetLastError();
-		anetSetError(err, "can't resolve %s: %s", bindaddr, WSAGetErrorDescription(error_code));
+        DWORD error_code = WSAGetLastError();
+        anetSetError(err, "can't resolve %s: %s", bindaddr, WSAGetErrorDescription(error_code));
         return ANET_ERR;
     }
 
@@ -287,22 +287,22 @@ int anetTcpServer(char *err, char *service, char *bindaddr, int *fds, int nfds)
 static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len)
 {
     int fd;
-	DWORD error_code;
+    DWORD error_code;
 
     while(1) {
         fd = accept(s,sa,len);
-		if (fd == INVALID_SOCKET) {
-			error_code = WSAGetLastError();
+        if (fd == INVALID_SOCKET) {
+            error_code = WSAGetLastError();
 
-			/*
-			According to the:
-			http://www.sockets.com/err_lst1.htm
-			WSAEINTR may happen - and according to the social.msdn.microsoft.com/Forums it sometimes happen
-			*/
-			if (error_code == WSAEINTR) {
+            /*
+            According to the:
+            http://www.sockets.com/err_lst1.htm
+            WSAEINTR may happen - and according to the social.msdn.microsoft.com/Forums it sometimes happen
+            */
+            if (error_code == WSAEINTR) {
                 continue;
-            } else {				
-				anetSetError(err, "accept: %s", WSAGetErrorDescription(error_code));
+            } else {                
+                anetSetError(err, "accept: %s", WSAGetErrorDescription(error_code));
             }
         }
         break;
