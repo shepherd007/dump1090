@@ -1,8 +1,8 @@
 // Part of dump1090, a Mode S message decoder for RTLSDR devices.
 //
-// anet.c: Basic TCP socket stuff made a bit less boring
+// anet.c: Windows implementation of TCP socket
 //
-// Copyright (c) 2016 Oliver Jowett <oliver@mutability.co.uk>
+// Copyright (c) 2016 Grzegorz suder <suder.grzegorz@gmail.com>
 //
 // This file is free software: you may copy, redistribute and/or modify it
 // under the terms of the GNU General Public License as published by the
@@ -20,6 +20,25 @@
 // This file incorporates work covered by the following copyright and
 // permission notice:
 //
+
+// Part of dump1090, a Mode S message decoder for RTLSDR devices.
+//
+// anet.c: Basic TCP socket stuff made a bit less boring
+//
+// Copyright (c) 2016 Oliver Jowett <oliver@mutability.co.uk>
+//
+// This file is free software: you may copy, redistribute and/or modify it
+// under the terms of the GNU General Public License as published by the
+// Free Software Foundation, either version 2 of the License, or (at your
+// option) any later version.
+//
+// This file is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+// General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 /* anet.c -- Basic TCP socket stuff made a bit less boring
  *
@@ -51,106 +70,81 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/un.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
-#include <unistd.h>
+
+#include "winstubs.h"
 #include <fcntl.h>
 #include <string.h>
-#include <netdb.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
-
+#include <varargs.h>
 #include "anet.h"
 
-static void anetSetError2(const char *fmt, ...)
-{
-    va_list ap;
+char error_description[ANET_ERR_LEN];
 
-    char err[256];
-    va_start(ap, fmt);
-    vsnprintf(err, ANET_ERR_LEN, fmt, ap);
-    va_end(ap);
+static char* WSAGetErrorDescription(DWORD err)
+{    
+    FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL, err,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPSTR)&error_description, ANET_ERR_LEN, NULL);
+
+    return error_description;
 }
+
 static void anetSetError(char *err, const char *fmt, ...)
 {
-    va_list ap;
+    va_list ap = NULL;
 
     if (!err) return;
-    va_start(ap, fmt);
+    va_start(ap, fmt);	
     vsnprintf(err, ANET_ERR_LEN, fmt, ap);
     va_end(ap);
 }
 
 int anetNonBlock(char *err, int fd)
 {
-    int flags;
-
-    /* Set the socket nonblocking.
-     * Note that fcntl(2) for F_GETFL and F_SETFL can't be
-     * interrupted by a signal. */
-    if ((flags = fcntl(fd, F_GETFL)) == -1) {
-        anetSetError(err, "fcntl(F_GETFL): %s", strerror(errno));
-        return ANET_ERR;
-    }
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-        anetSetError(err, "fcntl(F_SETFL,O_NONBLOCK): %s", strerror(errno));
-        return ANET_ERR;
-    }
-
-    return ANET_OK;
-}
-
-int anetTcpNoDelay(char *err, int fd)
-{
-    int yes = 1;
-    if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (void*)&yes, sizeof(yes)) == -1)
+    int iMode = 1;
+    if (SOCKET_ERROR == ioctlsocket(fd, FIONBIO, &iMode))
     {
-        anetSetError(err, "setsockopt TCP_NODELAY: %s", strerror(errno));
+		DWORD error_code = WSAGetLastError();
+		anetSetError(err, "ioctlsocket FIONBIO: %s", WSAGetErrorDescription(error_code));
         return ANET_ERR;
     }
+
     return ANET_OK;
 }
 
 int anetSetSendBuffer(char *err, int fd, int buffsize)
 {
-    if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (void*)&buffsize, sizeof(buffsize)) == -1)
+	if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (void*)&buffsize, sizeof(buffsize)) == SOCKET_ERROR)
     {
-        anetSetError(err, "setsockopt SO_SNDBUF: %s", strerror(errno));
+		DWORD error_code = WSAGetLastError();
+		anetSetError(err, "setsockopt SO_SNDBUF: %s", WSAGetErrorDescription(error_code));
         return ANET_ERR;
     }
-    return ANET_OK;
-}
 
-int anetTcpKeepAlive(char *err, int fd)
-{
-    int yes = 1;
-    if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void*)&yes, sizeof(yes)) == -1) {
-        anetSetError(err, "setsockopt SO_KEEPALIVE: %s", strerror(errno));
-        return ANET_ERR;
-    }
     return ANET_OK;
 }
 
 static int anetCreateSocket(char *err, int domain)
 {
     int s, on = 1;
-    if ((s = socket(domain, SOCK_STREAM, 0)) == -1) {
-        anetSetError(err, "creating socket: %s", strerror(errno));
+
+	if ((s = socket(domain, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+		DWORD error_code = WSAGetLastError();
+		anetSetError(err, "creating socket: %s", WSAGetErrorDescription(error_code));
         return ANET_ERR;
     }
 
     /* Make sure connection-intensive things like the redis benckmark
      * will be able to close/open sockets a zillion of times */
-    if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void*)&on, sizeof(on)) == -1) {
-        anetSetError(err, "setsockopt SO_REUSEADDR: %s", strerror(errno));
+	if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void*)&on, sizeof(on)) == SOCKET_ERROR) {
+		DWORD error_code = WSAGetLastError();
+		anetSetError(err, "setsockopt SO_REUSEADDR: %s", WSAGetErrorDescription(error_code));
         return ANET_ERR;
     }
+
     return s;
 }
 
@@ -174,7 +168,8 @@ static int anetTcpGenericConnect(char *err, char *addr, char *service, int flags
 
     gai_error = getaddrinfo(addr, service, &gai_hints, &gai_result);
     if (gai_error != 0) {
-        anetSetError(err, "can't resolve %s: %s", addr, gai_strerror(gai_error));
+		DWORD error_code = WSAGetLastError();
+		anetSetError(err, "can't resolve %s: %s", addr, WSAGetErrorDescription(error_code));
         return ANET_ERR;
     }
 
@@ -192,16 +187,19 @@ static int anetTcpGenericConnect(char *err, char *addr, char *service, int flags
             return s;
         }
 
+        DWORD error_code = WSAGetLastError();
         if (errno == EINPROGRESS && (flags & ANET_CONNECT_NONBLOCK)) {
             freeaddrinfo(gai_result);
             return s;
         }
 
-        anetSetError2(err, "connect: %s", strerror(errno));
-        close(s);
+		anetSetError(err, "connect: %s", WSAGetErrorDescription(error_code));
+
+        closesocket(s);
     }
 
     freeaddrinfo(gai_result);
+
     return ANET_ERR;
 }
 
@@ -215,45 +213,18 @@ int anetTcpNonBlockConnect(char *err, char *addr, char *service)
     return anetTcpGenericConnect(err,addr,service,ANET_CONNECT_NONBLOCK);
 }
 
-/* Like read(2) but make sure 'count' is read before to return
- * (unless error or EOF condition is encountered) */
-int anetRead(int fd, char *buf, int count)
-{
-    int nread, totlen = 0;
-    while(totlen != count) {
-        nread = read(fd,buf,count-totlen);
-        if (nread == 0) return totlen;
-        if (nread == -1) return -1;
-        totlen += nread;
-        buf += nread;
-    }
-    return totlen;
-}
-
-/* Like write(2) but make sure 'count' is read before to return
- * (unless error is encountered) */
-int anetWrite(int fd, char *buf, int count)
-{
-    int nwritten, totlen = 0;
-    while(totlen != count) {
-        nwritten = write(fd,buf,count-totlen);
-        if (nwritten == 0) return totlen;
-        if (nwritten == -1) return -1;
-        totlen += nwritten;
-        buf += nwritten;
-    }
-    return totlen;
-}
-
 static int anetListen(char *err, int s, struct sockaddr *sa, socklen_t len) {
     if (sa->sa_family == AF_INET6) {
         int on = 1;
-        setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on));
+        setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&on, sizeof(on));
     }
 
     if (bind(s,sa,len) == -1) {
-        anetSetError(err, "bind: %s", strerror(errno));
-        close(s);
+		DWORD error_code = WSAGetLastError();
+
+		anetSetError(err, "bind: %s", WSAGetErrorDescription(error_code));
+        closesocket(s);
+
         return ANET_ERR;
     }
 
@@ -261,10 +232,14 @@ static int anetListen(char *err, int s, struct sockaddr *sa, socklen_t len) {
      * the kernel does: backlogsize = roundup_pow_of_two(backlogsize + 1);
      * which will thus give us a backlog of 512 entries */
     if (listen(s, 511) == -1) {
-        anetSetError(err, "listen: %s", strerror(errno));
-        close(s);
+		DWORD error_code = WSAGetLastError();
+
+		anetSetError(err, "listn: %s", WSAGetErrorDescription(error_code));
+        closesocket(s);
+
         return ANET_ERR;
     }
+
     return ANET_OK;
 }
 
@@ -272,6 +247,7 @@ int anetTcpServer(char *err, char *service, char *bindaddr, int *fds, int nfds)
 {
     int s;
     int i = 0;
+
     struct addrinfo gai_hints;
     struct addrinfo *gai_result, *p;
     int gai_error;
@@ -287,7 +263,8 @@ int anetTcpServer(char *err, char *service, char *bindaddr, int *fds, int nfds)
 
     gai_error = getaddrinfo(bindaddr, service, &gai_hints, &gai_result);
     if (gai_error != 0) {
-        anetSetError(err, "can't resolve %s: %s", bindaddr, gai_strerror(gai_error));
+		DWORD error_code = WSAGetLastError();
+		anetSetError(err, "can't resolve %s: %s", bindaddr, WSAGetErrorDescription(error_code));
         return ANET_ERR;
     }
 
@@ -303,19 +280,29 @@ int anetTcpServer(char *err, char *service, char *bindaddr, int *fds, int nfds)
     }
 
     freeaddrinfo(gai_result);
+
     return (i > 0 ? i : ANET_ERR);
 }
 
 static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len)
 {
     int fd;
+	DWORD error_code;
+
     while(1) {
         fd = accept(s,sa,len);
-        if (fd == -1) {
-            if (errno == EINTR) {
+		if (fd == INVALID_SOCKET) {
+			error_code = WSAGetLastError();
+
+			/*
+			According to the:
+			http://www.sockets.com/err_lst1.htm
+			WSAEINTR may happen - and according to the social.msdn.microsoft.com/Forums it sometimes happen
+			*/
+			if (error_code == WSAEINTR) {
                 continue;
-            } else {
-                anetSetError(err, "accept: %s", strerror(errno));
+            } else {				
+				anetSetError(err, "accept: %s", WSAGetErrorDescription(error_code));
             }
         }
         break;
@@ -325,6 +312,7 @@ static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *l
 
 int anetTcpAccept(char *err, int s) {
     int fd;
+
     struct sockaddr_storage ss;
     socklen_t sslen = sizeof(ss);
 

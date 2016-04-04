@@ -51,4 +51,7 @@ typedef int socklen_t;
 // Other
 #define __attribute__(x) 
 
+#define inline __inline
+#define snprintf _snprintf
+
 #endif

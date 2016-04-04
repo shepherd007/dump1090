@@ -45,9 +45,9 @@ struct tm *localtime_r(const time_t *timer, struct tm *result)
     return result;
 }
 
-int nanosleep(const struct timespec *req, struct timespec *rem)
+int clock_nanosleep(clockid_t id, int flags, const struct timespec *ts, struct timespec *ots)
 {
-#pragma message("nanosleep is not supported in Windows OS (unless we figure out how to stub it)")
+#pragma message("clock_nanosleep is not supported in Windows OS (unless we figure out how to stub it)")
     return 0;
 }
 
