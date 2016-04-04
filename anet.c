@@ -68,15 +68,6 @@
 
 #include "anet.h"
 
-static void anetSetError2(const char *fmt, ...)
-{
-    va_list ap;
-
-    char err[256];
-    va_start(ap, fmt);
-    vsnprintf(err, ANET_ERR_LEN, fmt, ap);
-    va_end(ap);
-}
 static void anetSetError(char *err, const char *fmt, ...)
 {
     va_list ap;
@@ -197,7 +188,7 @@ static int anetTcpGenericConnect(char *err, char *addr, char *service, int flags
             return s;
         }
 
-        anetSetError2(err, "connect: %s", strerror(errno));
+        anetSetError(err, "connect: %s", strerror(errno));
         close(s);
     }
 
