@@ -302,11 +302,8 @@ static int testCPRRelative() {
     return ok;
 }
 
-
-
 int main(int __attribute__ ((unused)) argc, char __attribute__ ((unused)) **argv) {
     int ok = 1;
-
     ok = testCPRGlobalAirborne() && ok;
     ok = testCPRGlobalSurface() && ok;
     ok = testCPRRelative() && ok;

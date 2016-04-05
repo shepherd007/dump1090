@@ -1231,7 +1231,6 @@ char *generateHistoryJson(const char *url_path, int *len)
         return NULL;
 
     *len = Modes.json_aircraft_history[history_index].clen;
-
     return strdup(Modes.json_aircraft_history[history_index].content);
 }
 
@@ -1508,7 +1507,6 @@ static void modesReadFromClient(struct client *c) {
             left = MODES_CLIENT_BUF_SIZE;
             // If there is garbage, read more to discard it ASAP
         }
-
 #ifndef _WIN32
         nread = read(c->fd, c->buf+c->buflen, left);
 #else
@@ -1595,7 +1593,6 @@ static void modesReadFromClient(struct client *c) {
             // in the buffer, note that we full-scan the buffer at every read for simplicity.
             //
             while ((e = strstr(s, c->service->read_sep)) != NULL) { // end of first message if found
-
                 *e = '\0';                         // The handler expects null terminated strings
                 if (c->service->read_handler(c, s)) {               // Pass message to handler.
                     modesCloseClient(c);           // Handler returns 1 on error to signal we .

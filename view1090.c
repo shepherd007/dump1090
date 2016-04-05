@@ -174,7 +174,7 @@ int main(int argc, char **argv) {
     for (j = 1; j < argc; j++) {
         int more = ((j + 1) < argc); // There are more arguments
 
-        if (!strcmp(argv[j],"--net-bo-port") && more) {
+        if        (!strcmp(argv[j],"--net-bo-port") && more) {
             bo_connect_port = atoi(argv[++j]);
         } else if (!strcmp(argv[j],"--net-bo-ipaddr") && more) {
             bo_connect_ipaddr = argv[++j];

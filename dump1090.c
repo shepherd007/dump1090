@@ -769,7 +769,7 @@ void backgroundTasks(void) {
     trackPeriodicUpdate();
 
     if (Modes.net) {
-        modesNetPeriodicWork();
+	modesNetPeriodicWork();
     }    
 
 
