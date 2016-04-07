@@ -20,7 +20,9 @@
 
 #include <math.h>
 #include <stdio.h>
-#include <compiler.h>
+#ifdef WIN32
+#include "winstubs.h"
+#endif
 #include "cpr.h"
 
 // Global, airborne CPR test data:
