@@ -108,7 +108,6 @@ void showHelp(void) {
     );
 }
 
-
 //
 //=========================================================================
 //
@@ -122,7 +121,6 @@ int main(int argc, char **argv) {
     // Set sane defaults
 
     view1090InitConfig();
-
     // signal handlers:
     signal(SIGINT, sigintHandler); // Define Ctrl/C handler (exit program)
 
