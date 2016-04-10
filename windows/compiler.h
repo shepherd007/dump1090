@@ -17,5 +17,12 @@
 // You should have received a copy of the GNU General Public License  
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <signal.h>
+
 #define __attribute__(x) 
 #define inline __inline
+#define signal(sigid, hdlr) posix_signal(sigid, hdlr) // workaround for using custom implementation of signal()
+                                                      // (by default body of the function is being provided
+                                                      // in Visual C++)
+#define SIGWINCH 0
+#define SIGPIPE 0

@@ -25,3 +25,10 @@ int cls()
 
     return 0;
 }
+
+// Get the number of rows after the terminal changes size.
+int getTermRows() { 
+    struct winsize w; 
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w); 
+    return (w.ws_row); 
+}

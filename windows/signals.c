@@ -1,6 +1,6 @@
 // Part of dump1090, a Mode S message decoder for RTLSDR devices.
 //
-// console.c: windows helper methods for console operations.
+// signals.c: windows stubs for POSIX signals
 //
 // Copyright (c) 2016 Grzegorz Suder <suder.grzegorz@gmail.com>
 //
@@ -17,34 +17,34 @@
 // You should have received a copy of the GNU General Public License  
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <Windows.h>
+#include "dump1090.h"
+#include "logger.h"
 #include <signal.h>
 
-#define MODES_INTERACTIVE_ROWS          22      // Rows on screen
-
-int cls()
+static BOOL WINAPI HandlerRoutine(DWORD dwCtrlType)
 {
-    HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    COORD coord = { 0, 0 };
-    DWORD count;
+    Modes.exit = 1;
+    log_with_timestamp("Caught CTRL-C, shutting down..\n");
 
-    CONSOLE_SCREEN_BUFFER_INFO csbi;
-    if (0 == GetConsoleScreenBufferInfo(hStdOut, &csbi))
-    {
-        return -1;
-    }
-
-    if (0 == FillConsoleOutputCharacter(hStdOut, ' ', csbi.dwSize.X * csbi.dwSize.Y, coord, &count))
-    {
-        return -1;
-    }
-
-    if (0 == SetConsoleCursorPosition(hStdOut, coord))
-    {
-        return -1;
-    }
-
-    return 0;
+    return TRUE;
 }
 
-int getTermRows() { return MODES_INTERACTIVE_ROWS; }
+void posix_signal(int sigid, void* hdlr)
+{
+    if (SIGINT == sigid)
+    {
+        SetConsoleCtrlHandler(HandlerRoutine, TRUE);
+    }
+}
+
+void sigintHandler(int dummy) {
+
+}
+
+void sigtermHandler(int dummy) {
+
+}
+
+void sigWinchCallback() {
+
+}
