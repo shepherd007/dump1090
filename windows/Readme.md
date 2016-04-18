@@ -16,8 +16,8 @@ git submodule add git://git.osmocom.org/rtl-sdr.git
 
 
 **More information:**
-http://planeplotter.pbworks.com/w/page/79995023/Dump1090
+> http://planeplotter.pbworks.com/w/page/79995023/Dump1090
 
-Disabled features:
+**Disabled features:**
 - --throttle
 - --write-json 
