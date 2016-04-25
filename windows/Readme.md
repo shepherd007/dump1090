@@ -1,5 +1,9 @@
 This repository is an attempt to bring back dump1090 to life in Windows system. It is based on existing implementation with a fewer modifications.
 
+While cloning the view for windows development remember to set git config to:
+> git config --global core.autocrlf true
+
+That would help avoid issues with line breaks within public_html.
 After cloning repository you need to:
 ```
 cd /dump1090/windows
