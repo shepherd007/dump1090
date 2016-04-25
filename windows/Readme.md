@@ -3,7 +3,10 @@ This repository is an attempt to bring back dump1090 to life in Windows system. 
 After cloning repository you need to load submodule:
 ```
 cd /dump1090/windows
-git submodule add git://git.osmocom.org/rtl-sdr.git
+download ftp://sources.redhat.com/pub/pthreads-win32/pthreads-w32-2-9-1-release.zip
+unzip to the /dump1090/windows/pthreads
+download http://sdr.osmocom.org/trac/raw-attachment/wiki/rtl-sdr/RelWithDebInfo.zip
+unzip to the /dump1090/windows/rtl-sdr
 ```
 
 **Supported compilators:**

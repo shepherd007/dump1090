@@ -61,8 +61,6 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>libpthread.lib;ws2_32.lib;rtlsdr.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..;..\packages\pthreads.2.9.1.4\build\native\lib\v110\Win32\Debug\dynamic\cdecl</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command />
