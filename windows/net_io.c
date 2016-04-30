@@ -1258,6 +1258,7 @@ void writeJsonToFile(const char *file, char * (*generator) (const char *, int*))
 #define MODES_CONTENT_TYPE_JSON "application/json;charset=utf-8"
 #define MODES_CONTENT_TYPE_JS   "application/javascript;charset=utf-8"
 #define MODES_CONTENT_TYPE_GIF  "image/gif"
+#define MODES_CONTENT_TYPE_PNG  "image/png"
 
 static struct {
     char *path;
@@ -1361,7 +1362,7 @@ static int handleHTTPRequest(struct client *c, char *p) {
         clen = -1;
         content = strdup("Server error occured");
         if (!strncmp(hrp, rp, strlen(hrp))) {
-            if (stat(getFile, &sbuf) != -1 && (fd = open(getFile, O_RDONLY)) != -1) {
+            if (stat(getFile, &sbuf) != -1 && (fd = open(getFile, O_RDONLY | O_BINARY)) != -1) {
                 content = (char *) realloc(content, sbuf.st_size);
                 if (read(fd, content, sbuf.st_size) != -1) {
                     clen = sbuf.st_size;
@@ -1387,7 +1388,7 @@ static int handleHTTPRequest(struct client *c, char *p) {
         // Get file extension and content type
         content_type = MODES_CONTENT_TYPE_HTML; // Default content type
         ext = strrchr(getFile, '.');
-        
+
         if (ext) {
             if (!strcmp(ext, ".json")) {
                 content_type = MODES_CONTENT_TYPE_JSON;
@@ -1397,6 +1398,8 @@ static int handleHTTPRequest(struct client *c, char *p) {
                 content_type = MODES_CONTENT_TYPE_JS;
             } else if (!strcmp(ext, ".gif")) {
                 content_type = MODES_CONTENT_TYPE_GIF;
+            } else if (!strcmp(ext, ".png")) {
+                content_type = MODES_CONTENT_TYPE_PNG;
             }
         }
 
@@ -1404,7 +1407,6 @@ static int handleHTTPRequest(struct client *c, char *p) {
             printf("HTTP: %d %s: %s -> %s (%d bytes, %s)\n", statuscode, statusmsg, url, rp, clen, content_type);
         }
     }
-
 
     // Create the header and send the reply
     hdrlen = snprintf(hdr, sizeof(hdr),
